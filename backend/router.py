@@ -30,9 +30,16 @@ async def response_generator(thread_id, request: ChatRequest):
     }
     async for event in agent.astream({
         "messages": [HumanMessage(request.message)]
-    }, config=config, stream_mode="messages"):
+    }, config=config, stream_mode=["messages", "custom"]):
 
-        yield event[0].model_dump_json()+"\n"
+        type = event[0]
+        payload = event[1]
+
+        if type == "messages" :
+            yield payload[0].model_dump_json()+"\n"
+
+        if type == "custom" :
+            yield json.dumps(payload)+"\n"
 
 
 @router.post("/threads/{thread_id}/stream")

@@ -28,5 +28,6 @@ services:
       - SECRET_KEY=admin
     volumes:
       - ./notebooks:/notebooks
+      - ./output:/app
     ports:
       - "8888:8888"

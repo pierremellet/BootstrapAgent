@@ -29,7 +29,7 @@ def node_call_llm(state: MessagesState, writer: StreamWriter) -> Command[Literal
     if llm_response.tool_calls is not None and len(llm_response.tool_calls) > 0:
         goto = "node_tool_calls"
     else:
-        writer({"timer": datetime.datetime.now()})
+        writer({"timer": datetime.datetime.now().strftime("YYYY/MM/DD HH:mm:ss")})
         goto = END
 
     return Command(
