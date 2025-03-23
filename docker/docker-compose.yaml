@@ -1,0 +1,32 @@
+
+services:
+  pg:
+    image: postgres
+    environment:
+      - POSTGRES_PASSWORD=admin
+    ports:
+      - "5432:5432"
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8090:8080
+
+  nginx:
+    image: nginx
+    environment:
+      - SECRET_KEY=admin
+    volumes:
+      - ../backend/tmp:/usr/share/nginx/html
+    ports:
+      - "8080:80"
+
+  jupyter:
+    build: jupyter
+    environment:
+      - SECRET_KEY=admin
+    volumes:
+      - ./notebooks:/notebooks
+    ports:
+      - "8888:8888"
