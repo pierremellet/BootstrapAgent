@@ -1,11 +1,23 @@
-POST - http://localhost:8888/api/kernels
+# Installation
 
-{
-"id": "6e26568f-0449-499e-ba18-48e895dadf64",
-"name": "python3",
-"last_activity": "2025-03-15T20:30:25.766114Z",
-"execution_state": "starting",
-"connections": 0
-}
+    cd docker
+    docker compose up --build
 
+# Frontend
 
+    cd frontend
+    npm install
+    npm run dev
+
+# Backend
+
+Set env vars :
+- JUPYER_KERNEL_HTTP_GATEWAY=http://localhost:8888
+- JUPYER_KERNEL_WS_GATEWAY=ws://localhost:8888;
+- OPENAI_API_KEY=<api_key>
+
+Run backend :
+
+    cd backend
+    pip install -r ./requirements.txt
+    python main.py

@@ -1,16 +1,16 @@
-// frontend/src/app/chat/page.tsx
 "use client"
 
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import {v4 as uuidv4} from 'uuid';
+import { v4 as uuidv4 } from 'uuid';
 
 interface ChatMessage {
   content: string;
   id: string;
   type: string;
   response_metadata: any;
+  additional_kwargs: any;
 }
 
 const ChatApp: React.FC = () => {
@@ -24,8 +24,13 @@ const ChatApp: React.FC = () => {
 const ChatWindow: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState<string>('');
-  const [isSending, setIsSending] = useState<boolean>(false); // State to track sending status
-  const controllerRef = useRef<AbortController | null>(null); // Reference to AbortController
+  const [isSending, setIsSending] = useState<boolean>(false);
+  const [sessionId, setSessionId] = useState<string>('');
+  const controllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    setSessionId(uuidv4());
+  }, []);
 
   const handleSendMessage = async () => {
     if (input.trim()) {
@@ -33,21 +38,22 @@ const ChatWindow: React.FC = () => {
         content: input,
         id: new Date().toISOString(),
         type: "Human",
+        additional_kwargs: {},
         response_metadata: {}
       };
 
       setMessages(old => [...old, humanMessage]);
-      setIsSending(true); // Update sending status
-      controllerRef.current = new AbortController(); // Create a new AbortController
+      setIsSending(true);
+      controllerRef.current = new AbortController();
 
       try {
-        const response = await fetch(`http://localhost:8000/threads/${uuidv4()}/stream`, {
+        const response = await fetch(`http://localhost:8000/threads/${sessionId}/stream`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ message: input }),
-          signal: controllerRef.current.signal // Pass signal to fetch
+          signal: controllerRef.current.signal
         });
 
         if (!response.body) {
@@ -64,11 +70,8 @@ const ChatWindow: React.FC = () => {
           const chunk = decoder.decode(value, { stream: true });
           chunk.split("\n").forEach(line => {
             if (line !== "") {
-
               const payload = JSON.parse(line);
-
               if (payload['type']) {
-
                 setMessages(old => {
                   const existingMessageIndex = old.findIndex(msg => msg.id === payload.id);
                   if (existingMessageIndex !== -1) {
@@ -84,10 +87,8 @@ const ChatWindow: React.FC = () => {
               }
 
               if (payload['custom_event']) {
-
                 setMessages(old => {
-                    return [...old, { content: payload['custom_event'], type: "custom_event", id: uuidv4(), response_metadata: {} }];
-               
+                  return [...old, { content: payload['custom_event'], type: "custom_event", id: uuidv4(), response_metadata: {}, additional_kwargs: {} }];
                 });
               }
             }
@@ -102,22 +103,24 @@ const ChatWindow: React.FC = () => {
           console.error('Error sending message:', error);
         }
       } finally {
-        setIsSending(false); // Reset sending status
+        setIsSending(false);
       }
     }
   };
 
-  // Function to stop sending a message
   const handleStopMessage = () => {
     if (controllerRef.current) {
-      controllerRef.current.abort(); // Abort the fetch request
+      controllerRef.current.abort();
     }
-    setIsSending(false); // Reset sending status
+    setIsSending(false);
   };
 
   return (
     <div className="flex flex-col w-full p-4">
       <MessageList messages={messages} />
+      <div className="my-2 p-2 bg-gray-100 rounded-lg">
+        <strong>Session ID:</strong> {sessionId}
+      </div>
       <ChatInput
         input={input}
         setInput={setInput}
@@ -147,49 +150,65 @@ const MessageList: React.FC<{ messages: ChatMessage[] }> = ({ messages }) => {
 };
 
 const Message: React.FC<{ message: ChatMessage }> = ({ message }) => {
+  const messageClass = message.type !== 'Human' ? 'bg-blue-200 mr-10' : 'bg-gray-200 ml-10';
+
   return (
-    <div className="p-2 mb-2 bg-gray-200 rounded-lg">
+    <div className={`p-2 mb-2 ${messageClass} rounded-lg`}>
       <p><strong>Type:</strong> {message.type}</p>
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown><br />
       <p><strong>ID:</strong> {message.id}</p>
-      <p><strong>Metadata:</strong> {JSON.stringify(message.response_metadata)}</p>
+      <p><strong>response_metadata:</strong> {JSON.stringify(message.response_metadata)}</p>
+      <p><strong>additional_kwargs:</strong> {JSON.stringify(message.additional_kwargs)}</p>
     </div>
   );
 };
 
 const ChatInput: React.FC<{
   input: string,
-  setInput: (input: string) => void,
+  setInput: React.Dispatch<React.SetStateAction<string>>,
   handleSendMessage: () => void,
   isSending: boolean,
   handleStopMessage: () => void
 }> = ({ input, setInput, handleSendMessage, isSending, handleStopMessage }) => {
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const numberOfLines = input.split('\n').length;
+  const maxLines = 10;
+  const rows = numberOfLines > maxLines ? maxLines : numberOfLines;
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter") {
-      if (isSending) {
-        handleStopMessage(); // Stop sending if isSending
+      if (e.shiftKey) {
+        setInput(prev => prev + "\n");
       } else {
-        handleSendMessage();
+        if (isSending) {
+          handleStopMessage();
+        } else {
+          handleSendMessage();
+        }
       }
+      e.preventDefault();
     }
   };
 
   return (
     <div className="flex-shrink-0 flex">
-      <input
-        type="text"
+      <textarea
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}
-        className="flex-1 p-2 border rounded-l-lg"
+        className="flex-1 p-2 border rounded-l-lg resize-none overflow-auto"
         placeholder="Type a message..."
+        rows={rows}
+        style={{
+          maxHeight: '200px',
+          overflowY: numberOfLines > maxLines ? 'auto' : 'hidden'
+        }}
       />
       <button
         onClick={isSending ? handleStopMessage : handleSendMessage}
         className="p-2 bg-blue-500 text-white rounded-r-lg"
       >
-        {isSending ? 'Stop' : 'Send'} {/* Button text based on sending state */}
+        {isSending ? 'Stop' : 'Send'}
       </button>
     </div>
   );

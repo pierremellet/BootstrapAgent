@@ -2,7 +2,7 @@ import asyncio
 import json
 
 from fastapi import APIRouter, HTTPException
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel
 from starlette.responses import StreamingResponse
@@ -14,8 +14,10 @@ asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 router = APIRouter()
 agent = asyncio.run(create_agent())
 
+
 class ChatRequest(BaseModel):
     message: str
+
 
 @router.get("/threads")
 async def get_threads():
@@ -35,11 +37,11 @@ async def response_generator(thread_id, request: ChatRequest):
         type = event[0]
         payload = event[1]
 
-        if type == "messages" :
-            yield payload[0].model_dump_json()+"\n"
+        if type == "messages":
+            yield payload[0].model_dump_json() + "\n"
 
-        if type == "custom" :
-            yield json.dumps(payload)+"\n"
+        if type == "custom":
+            yield json.dumps(payload) + "\n"
 
 
 @router.post("/threads/{thread_id}/stream")

@@ -7,9 +7,13 @@ services:
     ports:
       - "5432:5432"
 
-  adminer:
-    image: adminer
+  pgadmin:
+    image: elestio/pgadmin
     restart: always
+    environment:    
+        - PGADMIN_DEFAULT_EMAIL=admin@localhost.com
+        - PGADMIN_DEFAULT_PASSWORD=admin
+        - PGADMIN_LISTEN_PORT=8080
     ports:
       - 8090:8080
 
@@ -21,6 +25,12 @@ services:
       - ../backend/tmp:/usr/share/nginx/html
     ports:
       - "8080:80"
+
+  labelstudio:
+    image: heartexlabs/label-studio
+    restart: always
+    ports:
+      - 8091:8080
 
   jupyter:
     build: jupyter

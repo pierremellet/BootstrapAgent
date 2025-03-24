@@ -4,3 +4,12 @@
   padding-left: 5rem;
   padding-right: 5rem;
  }
+
+ table tr {
+    border-bottom: 1px solid;
+ }
+
+ table td {
+    padding-left: 5px;
+    padding-right: 5px;
+ }
